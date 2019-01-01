@@ -13,7 +13,8 @@ global output ${base}output/
 
 cd "${base}"
 
-run ${code}/load_stmins_to_stata
+/*If you need to reload an updated set of state min wages, uncomment below*/
+/* run ${code}/load_stmins_to_stata */
 
 local yeardata 2017
 
@@ -38,14 +39,24 @@ local numsteps 2
 append_extracts, begin(2017m1) end(2017m12) sample(org)
 
 merge m:1 statecensus year month using ${data}/stmins
+drop if _merge==2
+drop _merge
 
 gen year0 = `yeardata'
+label variable year0 "Data year"
 gen month0 = month
+label variable month0 "Data month"
+rename stmin stmin0
+rename tipmin tipmin0
 
-forvalues a = 1/$numsteps {
-  replace year = $year_raise`a'
-  replace month = $month_pre_raise`a''
-  merge m:1 statecensus year month using ${data}/stmins
-  gen month`a' = month
-  gen year`a' = year
+forvalues a = 1 / `numsteps' {
+  replace year = `year_raise`a''
+  replace month = `month_pre_raise`a''
+  merge m:1 statecensus year month using ${data}/stmins, keepusing(stmin tipmin)
+  drop if _merge==2
+  drop _merge
+  rename stmin stmin`a'
+  rename tipmin tipmin`a'
+  label variable stmin`a' "CF min wage in step `a'"
+  label variable tipmin`a' "CF tip min wage in step `a'"
 }
