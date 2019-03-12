@@ -1,0 +1,9 @@
+---
+title: "EPI minimum wage simulation model"
+---
+
+This is the documentation for the EPI minimum wage simulation model.
+
+# Basic use
+
+Clone the repository here: https://github.com/Economic/min_wage_sim

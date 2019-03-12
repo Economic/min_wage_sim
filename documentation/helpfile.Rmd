@@ -1,0 +1,16 @@
+---
+title: "Helpfile"
+---
+
+This is the helpfile for `run_mw_model`:
+
+<!--
+below we use webdoc in stata to make a .md files
+-->
+```{stata, include=FALSE}
+adopath + "../ado"
+webdoc do includes/build_helpfile_child.webdoc
+```
+
+```{r, child = 'includes/helpfile_child.md'}
+```

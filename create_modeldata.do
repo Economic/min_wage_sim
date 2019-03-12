@@ -7,9 +7,6 @@ load_epiextracts, begin(2018m1) end(2018m12) sample(org)
 * create unique id
 gen uniqueid = _n
 
-* merge min wage data
-merge m:1 statecensus month using "${inputdir}example_stmin.dta", assert(3) nogenerate
-
 * identify tipped workers
 * first identify industries with tipped food servers
 gen byte tippedind = .

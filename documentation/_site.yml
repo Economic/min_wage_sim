@@ -1,0 +1,21 @@
+output_dir: '../docs'
+navbar:
+  title: "EPI minimum wage simulation model"
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "Helpfile"
+      href: helpfile.html
+output:
+  html_document:
+    theme: united
+    highlight: tango
+    include:
+#      after_body: footer.html
+    css: styles.css
+    pandoc_args: [
+      "--syntax-definition", "stata.xml",
+    ]
+    
+# the Stata syntax definition is available from
+# https://raw.githubusercontent.com/mcaceresb/highlight-sas-stata/master/skylighting/stata.xml
