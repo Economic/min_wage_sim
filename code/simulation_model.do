@@ -14,11 +14,15 @@ global output ${base}output/
 cd "${base}"
 
 /*If you need to reload an updated set of state min wages, uncomment below*/
-/* run ${code}/load_stmins_to_stata */
+/* run ${code}/import_stmins.do */
 
 local yeardata 2017
 
-scalar popgrowth = 1.0
+scalar popgrowth_w = 1.0
+scalar popgrowth_b = 1.0
+scalar popgrowth_h = 1.0
+scalar popgrowth_a = 1.0
+scalar popgrowth_o = 1.0
 
 scalar wagegrowth1 = 1.248
 local monthstoraise1 12
@@ -49,6 +53,7 @@ label variable month0 "Data month"
 rename stmin stmin0
 rename tipmin tipmin0
 
+*merge counterfactual minimum wages to each obs for all steps
 forvalues a = 1 / `numsteps' {
   replace year = `year_raise`a''
   replace month = `month_pre_raise`a''
@@ -60,3 +65,24 @@ forvalues a = 1 / `numsteps' {
   label variable stmin`a' "CF min wage in step `a'"
   label variable tipmin`a' "CF tip min wage in step `a'"
 }
+
+*define workers and demographic categories
+gen byte worker = 0
+replace worker =1 if age>=16 & wage>0 & emp==1
+label variable worker "wage earner"
+
+gen teens = irecode(age,20)
+label define l_teens 0 "Teenager" 1 "Age 20 or older"
+label values teens l_teens
+
+gen agecat = irecode(age,25,40,55)
+label define agecats 0 "Age 16 to 24" 1 "Age 25 to 39" 2 "Age 40 to 54" ///
+  3 "Age 55 or older"
+label values agecat agecats
+
+*gen byte parent = 0
+*replace parent = 1 if
+
+
+
+*adjust weights and wage values to month preceding first increase

@@ -1,4 +1,6 @@
 *input state minimum wage and tipped minimum wage values for all months
+*from excel-generated csv file.
+*See r:/The Data/Min Wage/Historical and projected State Minimum Wages MASTER.xlsx
 *12/27/2018
 
 set more off
