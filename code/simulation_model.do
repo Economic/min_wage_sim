@@ -26,21 +26,21 @@ scalar popgrowth_o = 1.0
 
 scalar wagegrowth1 = 1.248
 local monthstoraise1 12
-local month_pre_raise1 7
+local month_raise1 7
 local year_raise1 2019
 scalar newmw1 = 9.25
 scalar newtw1 = 4.15
 
 scalar wagegrowth2 = 1.248
 local monthstoraise2 12
-local month_pre_raise2 7
+local month_raise2 7
 local year_raise2 2020
 scalar newmw1 = 10.10
 scalar newtw1 = 5.30
 
 local numsteps 2
 
-append_extracts, begin(2017m1) end(2017m12) sample(org)
+load_epiextracts, begin(2017m1) end(2017m12) sample(org)
 
 merge m:1 statecensus year month using ${data}/stmins
 drop if _merge==2
@@ -66,10 +66,11 @@ forvalues a = 1 / `numsteps' {
   label variable tipmin`a' "CF tip min wage in step `a'"
 }
 
+
 *define workers and demographic categories
 gen byte worker = 0
 replace worker =1 if age>=16 & wage>0 & emp==1
-label variable worker "wage earner"
+label variable worker "Wage earner"
 
 gen teens = irecode(age,20)
 label define l_teens 0 "Teenager" 1 "Age 20 or older"

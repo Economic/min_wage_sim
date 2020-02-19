@@ -18,4 +18,7 @@ label variable tipmin "State tipped minimum wage"
 
 rename state statecensus
 
+gen edate = ym(Year,Month)
+format %tm edate
+
 save ${data}/stmins, replace
