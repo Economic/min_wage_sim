@@ -6,19 +6,21 @@
 set more off
 clear all
 
-global base /home/dcooper/projects/min_wage/
+global base Projects/min_wage/
 global code ${base}code/
 global data ${base}data/
 global output ${base}output/
 
-import delimited using ${data}/stmins.csv
+import delimited using ${data}stmins.csv
 
 label variable stmin "State minimum wage"
 label variable tipmin "State tipped minimum wage"
 
 rename state statecensus
 
-gen edate = ym(Year,Month)
-format %tm edate
+gen mdate = ym(year,month)
+format %tm mdate
 
-save ${data}/stmins, replace
+label variable mdate "Month and Year"
+
+save ${data}stmins, replace
