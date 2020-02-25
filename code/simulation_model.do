@@ -42,7 +42,7 @@ local numsteps 2
 
 load_epiextracts, begin(2017m1) end(2017m12) sample(org)
 
-merge m:1 statecensus year month using ${data}/stmins
+merge m:1 statecensus year month using ${data}stmins
 drop if _merge==2
 drop _merge
 
@@ -57,7 +57,7 @@ rename tipmin tipmin0
 forvalues a = 1 / `numsteps' {
   replace year = `year_raise`a''
   replace month = `month_pre_raise`a''
-  merge m:1 statecensus year month using ${data}/stmins, keepusing(stmin tipmin)
+  merge m:1 statecensus year month using ${data}stmins, keepusing(stmin tipmin)
   drop if _merge==2
   drop _merge
   rename stmin stmin`a'
@@ -65,7 +65,6 @@ forvalues a = 1 / `numsteps' {
   label variable stmin`a' "CF min wage in step `a'"
   label variable tipmin`a' "CF tip min wage in step `a'"
 }
-
 
 *define workers and demographic categories
 gen byte worker = 0
