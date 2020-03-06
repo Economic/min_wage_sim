@@ -1,35 +1,6 @@
 *Load correct minimum wage and tipped minimum wage values for data year of
 *dataset and month and years of each proposed increase
 
-set more off
-clear all
-
-global base Projects/min_wage/
-global code ${base}code/
-global data ${base}data/
-global output ${base}output/
-
-global allmins ${data}stmins.dta
-
-*Set parameters for model
-local year_data 2017
-local month_data 7
-
-local month_raise1 7
-local year_raise1 2019
-scalar newmw1 = 9.25
-scalar newtw1 = 4.15
-
-local month_raise2 7
-local year_raise2 2020
-scalar newmw1 = 10.10
-scalar newtw1 = 5.30
-
-*set number of steps in the model
-local numsteps = 2 
-
-*End parameters for model
-
 *create data set of all relevant state minimum wages 
 use ${allmins}
 
@@ -39,6 +10,9 @@ format %tm step0
 label variable step0 "Date of model source data"
 
 keep if mdate==step0
+
+rename stmin stmin0
+rename tipmin tipmin0
 
 tempfile mindata
 save `mindata'
@@ -54,6 +28,9 @@ forvalues a = 1 / `numsteps' {
     drop mdate
     drop month
     drop year
+
+    rename stmin stmin`a'
+    rename tipmin tipmin`a'
     
     if `a' == 1 {
         tempfile combine_mins
