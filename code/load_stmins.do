@@ -11,6 +11,10 @@ label variable step0 "Date of model source data"
 
 keep if mdate==step0
 
+drop mdate
+drop month
+drop year
+
 rename stmin stmin0
 rename tipmin tipmin0
 
@@ -30,18 +34,22 @@ forvalues a = 1 / `numsteps' {
     drop year
 
     rename stmin stmin`a'
+    label variable stmin`a' "State minimum wage at Step `a'"
     rename tipmin tipmin`a'
+    label variable tipmin`a' "State tipped minimum wage at Step `a'"
     
     if `a' == 1 {
         tempfile combine_mins
         save `combine_mins'
     }
     else {
-        append using `combine_mins'
+        merge 1:1 pwstate using `combine_mins'
+	drop _merge
         save `combine_mins', replace
     }
 }
 
-append using `mindata'
+merge 1:1 pwstate using `mindata'
+drop _merge
 save `mindata', replace
 

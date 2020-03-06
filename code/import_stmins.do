@@ -6,7 +6,7 @@
 set more off
 clear all
 
-global base projects/dcooper/min_wage/
+global base /projects/dcooper/min_wage/
 global code ${base}code/
 global data ${base}data/
 global output ${base}output/
@@ -22,5 +22,7 @@ gen mdate = ym(year,month)
 format %tm mdate
 
 label variable mdate "Month and Year"
+label variable pwstate "State FIPS code"
+label variable statecensus "State Census code"
 
 save ${data}stmins, replace
