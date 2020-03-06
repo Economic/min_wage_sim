@@ -6,12 +6,12 @@
 set more off
 clear all
 
-global base Projects/min_wage/
+global base projects/dcooper/min_wage/
 global code ${base}code/
 global data ${base}data/
 global output ${base}output/
 
-import delimited using ${data}stmins.csv
+import delimited using ${data}stmins_current.csv
 
 label variable stmin "State minimum wage"
 label variable tipmin "State tipped minimum wage"
