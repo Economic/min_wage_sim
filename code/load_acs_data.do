@@ -42,7 +42,7 @@ gen byte racec = .
 replace racec = 3 if (1<=hispan<=4)
 replace racec = 1 if (hispan==0 & race==1)
 replace racec = 2 if (hispan==0 & race==2)
-replace racec = 4 if (hispan==0 & race>3)
+replace racec = 4 if (hispan==0 & race>3 & race ~= .)
 *replace racec = 4 if (hispan==0 & (4<=race<=6))
 *replace racec = 5 if (hispan==0 & race>6) 
 
@@ -64,7 +64,7 @@ replace edc=1 if (2<=educd<62)
 replace edc=2 if (62<=educd<=64)
 replace edc=3 if (65<=educd<=71)
 replace edc=4 if (81<=educd>=83)
-replace edc=5 if (101<=educd)
+replace edc=5 if ((101<=educd) & edc ~= .) 
 
 lab var edc "Educational attainment"
 #delimit ;

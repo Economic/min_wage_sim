@@ -12,38 +12,23 @@ global output ${base}output/
 global log ${base}logs/
 
 global allmins ${data}stmins.dta
+global activemins ${data}sim_active_mins.dta
 
 capture log close
 log using "${log}min_wage_test.txt", text replace
 numlabel, add
 
-**************Set parameters for model****************
-local year_data 2017
-local month_data 7
+*inputs proposed [tipped] minimums by month/year, plus current-law state mins
+*specify csv file with proposed increase schedule and data year of ACS data
+do ${code}load_model_inputs.do "${data}test_inputs"
 
-local month_raise1 7
-local year_raise1 2019
-scalar newmw1 = 9.25
-scalar newtw1 = 4.15
-
-local month_raise2 7
-local year_raise2 2020
-scalar newmw1 = 10.10
-scalar newtw1 = 5.30
-
-*set number of steps in the model
-local numsteps = 2 
 *need to add parameters for population/employment growth and wage growth
 *specify lower bound on population eligible for minimum wage increase?
 *specify upper bound of spillover effect?
 
-************End parameters for model************************
-
-include ${code}load_stmins.do
-
 include ${code}load_acs_data.do
 
-merge m:1 pwstate using `mindata'
+merge m:1 pwstate using $activemins
 drop _merge
 
 *create adusted weights for t1, t2...tx
@@ -60,8 +45,6 @@ drop _merge
 
 *generate and output descriptive statistics of affected workers
 **by various demographic cuts
-
-
 
 log close
 exit
