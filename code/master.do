@@ -18,20 +18,20 @@ capture log close
 log using "${log}min_wage_test.txt", text replace
 numlabel, add
 
+*inputs latest CPI projections
+do ${code}load_cpi_projections.do "${data}CPI_projections_8_2020"
+
 *inputs proposed [tipped] minimums by month/year, plus current-law state mins
 *specify csv file with proposed increase schedule and data year of ACS data
 do ${code}load_model_inputs.do "${data}test_inputs"
 
-*need to add parameters for population/employment growth and wage growth
+*inputs current population growth projections by race/ethnicity
+do ${code}load_pop_projections.do "${data}pop_projections_8_2020"
+
 *specify lower bound on population eligible for minimum wage increase?
 *specify upper bound of spillover effect?
 
 include ${code}load_acs_data.do
-
-merge m:1 pwstate using $activemins
-drop _merge
-
-*create adusted weights for t1, t2...tx
 
 *generate counterfactual wage values at t1, t2...tx
 **consider natural nominal wage growth

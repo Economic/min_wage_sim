@@ -1,9 +1,13 @@
 *loads the ACS_state.dta file and formats demographic variables
+clear
 
 use ${data}acs_state.dta
 keep if pwstate>0
 
 drop perwt0 perwt1
+
+rename perwt2 perwt0
+label var perwt0 "Raked person weight at data period"
 
 gen pop=1
 
@@ -49,43 +53,47 @@ replace racec = 4 if (hispan==0 & race>3 & race ~= .)
 lab var racec "Race / ethnicity"
 #delimit ;
 lab define racec
-1 "White, non-Hispanic"
-2 "Black, non-Hispanic"
-3 "Hispanic, any race"
-4 "Asian or other race, non-Hispanic"
-*5 "Other race/ethnicity"
+1 "White, non-Hispanic" 
+2 "Black, non-Hispanic" 
+3 "Hispanic, any race" 
+4 "Asian or other race, non-Hispanic" 
 ;
+*5 "Other race/ethnicity";
 #delimit cr
-lab val racec racec
+
+label val racec racec
 
 *education
-gen byte edc =.
-replace edc=1 if (2<=educd<62)
-replace edc=2 if (62<=educd<=64)
-replace edc=3 if (65<=educd<=71)
-replace edc=4 if (81<=educd>=83)
-replace edc=5 if ((101<=educd) & edc ~= .) 
+gen byte edc = .
+replace edc=1 if 2<=educd & educd < 62
+replace edc=2 if 62<=educd & educd<=64
+replace edc=3 if 65<=educd & educd<=71
+replace edc=4 if 81<=educd & educd<=83
+replace edc=5 if 101<=educd & educd<=. 
 
-lab var edc "Educational attainment"
+label var edc "Educational attainment"
+
 #delimit ;
-lab define edc
-1 "Less than high school"
+label define edc 
+1 "Less than high school" 
 2 "High school"
 3 "Some college, no degree"
 4 "Associates degree"
-5 "Bachelor's degree or higher"
-;
+5 "Bachelors degree or higher" 
+; 
+
 #delimit cr
-lab val edc edc
+
+label val edc edc
 
 *Marital and parental status
 gen byte parent=.
 replace parent=1 if (nchild>=1 & hasyouth_fam==1)
 
 gen byte childc=.
-replace childc = 1 if (parent==1 & (1<=marst<=2))
+replace childc = 1 if (parent==1 & (1<=marst & marst<=2))
 replace childc = 2 if (parent==1 & marst>2)
-replace childc = 3 if (parent~=1 & (1<=marst<=2))
+replace childc = 3 if (parent~=1 & (1<=marst & marst<=2))
 replace childc = 4 if (parent~=1 & marst>2)
 
 lab var childc "Family status"
@@ -113,7 +121,7 @@ lab var povstat "Family income-to-poverty status"
 
 *define worker-specific categories
 gen byte worker = .
-replace worker = 1 if (age>=16 & hrwage2>0 & (22<=classwkrd<=28) & (10<=empstatd<=12))
+replace worker = 1 if (age>=16 & hrwage2>0 & (22<=classwkrd & classwkrd<=28) & (10<=empstatd & empstatd <=12))
 label variable worker "Wage earner"
 lab var worker "Wage-earning worker status"
 
@@ -127,8 +135,8 @@ lab var hourc "Usual weekly work hours category"
 gen byte sectc=.
 replace sectc = 1 if classwkrd==22
 replace sectc = 2 if classwkrd==23
-replace sectc = 3 if (24<=classwkrd<=28)
-replace sectc = 4 if (10<=classwkrd<20)
+replace sectc = 3 if (24<=classwkrd & classwkrd<=28)
+replace sectc = 4 if (10<=classwkrd & classwkrd <20)
 
 lab var sectc "Sector"
 #delimit ;
@@ -143,24 +151,24 @@ lab val sectc sectc
 
 *industry
 gen byte indc=.
-replace indc = 1 if (170<=ind<=490)
+replace indc = 1 if (170<=ind & ind<=490)
 replace indc = 2 if ind==770
-replace indc = 4 if (1070<=ind<=3990)
-replace indc = 5 if (4070<=ind<=4590)
-replace indc = 6 if (4670<=ind<=5790)
-replace indc = 7 if ((6070<=ind<=6390)|(570<=ind<=690))
-replace indc = 8 if (6470<=ind<=6780) 
-replace indc = 9 if (6870<=ind<=7190)
-replace indc = 10 if (7270<=ind<=7570) 
-replace indc = 11 if (7580<=ind<=7790)
-replace indc = 12 if (7860<=ind<=7890) 
-replace indc = 13 if (7970<=ind<=8470)
-replace indc = 14 if (8560<=ind<=8590)
-replace indc = 15 if (8660<=ind<=8670) 
-replace indc = 16 if (8680<=ind<=8690) 
-replace indc = 17 if (8770<=ind<=9290)
-replace indc = 18 if (9370<=ind<=9590)
-replace indc = 19 if (9670<=ind<=9870)
+replace indc = 4 if (1070<=ind & ind<=3990)
+replace indc = 5 if (4070<=ind & ind<=4590)
+replace indc = 6 if (4670<=ind & ind<=5790)
+replace indc = 7 if ((6070<=ind & ind<=6390)|(570<=ind & ind<=690))
+replace indc = 8 if (6470<=ind & ind<=6780) 
+replace indc = 9 if (6870<=ind & ind<=7190)
+replace indc = 10 if (7270<=ind & ind<=7570) 
+replace indc = 11 if (7580<=ind & ind<=7790)
+replace indc = 12 if (7860<=ind & ind<=7890) 
+replace indc = 13 if (7970<=ind & ind<=8470)
+replace indc = 14 if (8560<=ind & ind<=8590)
+replace indc = 15 if (8660<=ind & ind<=8670) 
+replace indc = 16 if (8680<=ind & ind<=8690) 
+replace indc = 17 if (8770<=ind & ind<=9290)
+replace indc = 18 if (9370<=ind & ind<=9590)
+replace indc = 19 if (9670<=ind & ind<=9870)
 
 lab var indc "Major Industry"
 #delimit ;
@@ -186,6 +194,22 @@ lab define indc
 ;
 #delimit cr
 lab val indc indc
+
+*merge in existing and scheduled minimumw wages
+merge m:1 pwstate using $activemins
+drop _merge
+
+*merge population growth rate assumptions
+merge m:1 racec using ${data}popgrowth
+drop _merge
+
+*adjust person weights to reflect weights at t[n]
+forvalues a = 1/$steps {
+  gen perwt`a' = perwt`=`a'-1' * ((($t`a'/12) * (growthann-1))+1)
+  label var perwt`a' "Person weight at step `a'" 
+}
+
+
 
 
 
