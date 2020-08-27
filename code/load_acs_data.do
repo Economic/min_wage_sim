@@ -4,7 +4,10 @@ clear
 use ${data}acs_state.dta
 keep if pwstate>0
 
-drop perwt0 perwt1
+drop perwt0 perwt1 hrwage0 hrwage1
+
+rename hrwage2 hrwage0
+label var hrwage0 "Hourly wage at data period"
 
 rename perwt2 perwt0
 label var perwt0 "Raked person weight at data period"
@@ -40,6 +43,7 @@ lab define female
 ;
 #delimit cr
 lab val female female
+drop sex
 
 *race/ethnicity
 gen byte racec = .
@@ -62,6 +66,7 @@ lab define racec
 #delimit cr
 
 label val racec racec
+drop race raced hispan hispand
 
 *education
 gen byte edc = .
@@ -83,12 +88,13 @@ label define edc
 ; 
 
 #delimit cr
-
 label val edc edc
+drop educ educd
 
 *Marital and parental status
 gen byte parent=.
 replace parent=1 if (nchild>=1 & hasyouth_fam==1)
+label var parent "Parent flag"
 
 gen byte childc=.
 replace childc = 1 if (parent==1 & (1<=marst & marst<=2))
@@ -106,6 +112,7 @@ lab define childc
 ;
 #delimit cr
 lab val childc childc
+drop marst
 
 *Family income and poverty
 gen faminc = irecode(ftotinc,25000,50000,75000,100000,150000)
@@ -121,7 +128,7 @@ lab var povstat "Family income-to-poverty status"
 
 *define worker-specific categories
 gen byte worker = .
-replace worker = 1 if (age>=16 & hrwage2>0 & (22<=classwkrd & classwkrd<=28) & (10<=empstatd & empstatd <=12))
+replace worker = 1 if (age>=16 & hrwage0>0 & (22<=classwkrd & classwkrd<=28) & (10<=empstatd & empstatd <=12))
 label variable worker "Wage earner"
 lab var worker "Wage-earning worker status"
 
@@ -205,10 +212,73 @@ drop _merge
 
 *adjust person weights to reflect weights at t[n]
 forvalues a = 1/$steps {
-  gen perwt`a' = perwt`=`a'-1' * ((($t`a'/12) * (growthann-1))+1)
+  gen perwt`a' = perwt`=`a'-1' * (((months_to_`a'/12) * (growthann-1))+1)
   label var perwt`a' "Person weight at step `a'" 
 }
 
+*create counterfactual wage values
+gen cf_hrwage0 = hrwage0
+
+forvalues a = 1/$steps {
+  gen hrwage`a' = .
+  label var hrwage`a' "Hourly wage at step `a'"
+  *increase hourly wage values by inflation between data period and each step
+  replace hrwage`a' = hrwage`=`a'-1' * (cpi`a' / cpi`=`a'-1') if hrwage0 != .
+   * replace hrwage`a' = (cpi`a' / cpi0) * hrwage0 if hrwage0 != .
+  
+*increase hourly wage to new MW if increase occured since data period
+  *simple option:
+    *replace hrwage`a' = stmin`a' if (stmin`a' > hrwage`a') & (hrwage`=`a'-1' > (lower_bound * stmin`=`ka'-1'))
+
+  *old model's logic:
+  if stmin`a' > stmin`=`a'-1' {
+    *in places where there was a minimum wage increase
+    if hrwage`a' < (stmin`a' * spillover) {
+      *if their cpi/natural-wage-growth-adjusted wage is less than the new minimum wage
+      if (hrwage`=`a'-1' < stmin`=`a'-1') {
+        *if they were below the previous minimum wage, bring them to the same relative place
+        replace hrwage`a' = max((hrwage0 / stmin0) * stmin`a', hrwage`a') 
+      }
+      else {
+        *otherwise, bring them either 1/4 the distance to the spillover cutoff or up to the new minimum, which is larger
+        replace hrwage`a' = max(stmin`a', hrwage`=`a'-1' + (((stmin`a' * spillover)-hrwage`=`a'-1')*.025))
+      }
+    }
+  }
+ 
+ gen cf_hrwage`a' = hrwage`a'
+ label var cf_hrwage`a' "Counterfactual wage at step `a'"
+ }
+
+*identify directly and indirectly affected workers, calculate implied raise
+forvalues a = 1/$steps {
+  gen direct`a' = .
+  gen indirect`a' = .
+  gen raise`a' = .
+
+  label var direct`a' "Directly affected at step `a'"
+  label var indirect`a' "Indirectly affected at step `a'"
+  label var raise`a' "Raise resulting from increase at step `a'"
+
+  if worker == 1 {
+    replace direct`a' = 0
+    replace indirect`a' = 0
+    
+    *flag workers with wages below the new MW and above the old lower bound as directly affected
+    *flag workers with wages above the new MW and below the spillover cutoff as indirectly affected
+    replace direct`a' = 1 if (new_mw`a' > hrwage`a') & (hrwage`a' > (lower_bound * stmin`a'))
+    replace indirect`a' = 1 if (hrwage`a' >= new_mw`a') & (hrwage`a' < (spillover * new_mw`a'))
+
+    *calculate implied raises for both 
+    replace raise`a' = min(max((new_mw`a' - hrwage`a'), 0.25 * ((spillover * new_mw`a') - hrwage`a')), new_mw`a' - stmin`a') if direct`a' == 1
+    replace raise`a' = 0.25 * ((spillover * new_mw`a') - hrwage`a') if indirect`a' == 1
+
+    *add raise to existing hourly wage
+    replace hrwage`a' = hrwage`a' + raise`a'
+    }
+}
+tempfile allsimdata
+save `allsimdata'
 
 
 

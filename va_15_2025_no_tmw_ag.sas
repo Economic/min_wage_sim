@@ -994,7 +994,7 @@ if worker=1 then do;
  draise=.;
  iraise=.;
 
- indirect_cutoff1 = &newrate1*1.15; *Per Arin's Frictions paper; 
+ indirect_cutoff1 = &newrate1*1.15; *Per Arins Frictions paper; 
  *indirect_cutoff1 = &newrate1 + (&newrate1 - stmin&year_proposal); * this cutoff changes with size of increase; 
 
 if tipped in (0,1) then do;
