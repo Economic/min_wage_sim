@@ -22,6 +22,12 @@ forvalues a = 1/$steps {
 use `all_affected', clear
 sort step
 
+gen affected = direct + indirect
+gen m_affected = m_direct + m_indirect
+
+order step pop direct m_direct indirect m_indirect affected m_affected
+
+
 
 /*
 use `overall_step`a'', clear
