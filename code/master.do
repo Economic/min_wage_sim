@@ -48,6 +48,7 @@ include ${code}analyze_affected.do
 **by various demographic cuts
 
 *delete ${data}allsimdata.dta ??
+erase ${data}allsimdata.dta
 
 log close
 exit
