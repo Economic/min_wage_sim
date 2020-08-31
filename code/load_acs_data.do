@@ -277,8 +277,10 @@ forvalues a = 1/$steps {
     replace hrwage`a' = hrwage`a' + raise`a'
     }
 }
-tempfile allsimdata
-save `allsimdata'
+
+save ${data}allsimdata.dta, replace
+
+
 
 
 

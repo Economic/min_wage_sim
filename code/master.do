@@ -13,6 +13,8 @@ global log ${base}logs/
 
 global allmins ${data}stmins.dta
 global activemins ${data}sim_active_mins.dta
+global simdata ${data}allsimdata.dta
+
 
 capture log close
 log using "${log}min_wage_test.txt", text replace
@@ -38,14 +40,14 @@ do ${code}load_pop_projections.do "${data}pop_projections_8_2020"
 **apply state minimum wage changes between t0, t1...tx
 include ${code}load_acs_data.do
 
-*identify directly affected observations (hrwageX<stminX)
-**calculate resulting/implied wage increases for those workers
-
-*identify indirectly affected observations (stmin1<=hrwage2<spillover cutoff)
-**calculate resulting/implied wage increases for those workers
+include ${code}analyze_affected.do
+*calculate raises for each set of affected workers
+*generate output by various categories
 
 *generate and output descriptive statistics of affected workers
 **by various demographic cuts
+
+*delete ${data}allsimdata.dta ??
 
 log close
 exit
