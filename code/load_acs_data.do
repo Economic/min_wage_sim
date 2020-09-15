@@ -4,7 +4,8 @@ clear
 use ${data}acs_state.dta
 keep if pwstate>0
 
-drop perwt0 perwt1 hrwage0 hrwage1
+drop perwt0 perwt1 hrwage0 hrwage1 metro met2013 nfams subfam foodstmp racamind racblk ///
+  racasian racpacis racwht racother racnum empstat ind1990 classwkr adj_wkswork* 
 
 rename hrwage2 hrwage0
 label var hrwage0 "Hourly wage at data period"
@@ -22,13 +23,16 @@ replace incwage = . if incwage>=9999999
 *define demographic categories
 *age
 gen teens = irecode(age,20)
+lab var teens "Teenager flag"
 label define l_teens 0 "Teenager" 1 "Age 20 or older"
 label values teens l_teens
 
 gen agec = irecode(age,25,40,55)
+lab var agec "Age category"
 label define agec 0 "Age 16 to 24" 1 "Age 25 to 39" 2 "Age 40 to 54" ///
   3 "Age 55 or older"
 label values agec agec
+drop age
 
 *sex
 gen byte female = .
@@ -67,6 +71,15 @@ lab define racec
 
 label val racec racec
 drop race raced hispan hispand
+
+*Person of color
+gen byte poc = .
+replace poc = 0 if racec == 1
+replace poc = 1 if racec != 1
+
+lab var poc "Person of color"
+lab define poc 0 "Not person of color" 1 "Person of color"
+label val poc poc
 
 *education
 gen byte edc = .
@@ -117,7 +130,7 @@ drop marst
 *Family income and poverty
 gen faminc = irecode(ftotinc,25000,50000,75000,100000,150000)
 label define l_faminc 0 "Less than $25,000" 1 "$25,000 - $49,999" 2 "$50,000 - $74,999" ///
-  3 "$75,000 - $99,999" 4 "$100,000 - $149,999" 5 "$150,000 or more"
+  3 "$75,000 - $99,999" 4 "$100,000 - $149,999" 5 "$150,000 or more" . "Missing family income"
 label values faminc l_faminc
 lab var faminc "Family income category"
 
@@ -127,10 +140,11 @@ label values povstat l_povstat
 lab var povstat "Family income-to-poverty status"
 
 *define worker-specific categories
-gen byte worker = .
+gen byte worker = 0
 replace worker = 1 if (age>=16 & hrwage0>0 & (22<=classwkrd & classwkrd<=28) & (10<=empstatd & empstatd <=12))
-label variable worker "Wage earner"
 lab var worker "Wage-earning worker status"
+lab define l_worker 0 "Not a wage-earner" 1 "Wage-earner"
+label values worker l_worker
 
 *work hours
 gen hourc = irecode(uhrswork,20,35)
@@ -202,6 +216,32 @@ lab define indc
 #delimit cr
 lab val indc indc
 
+*Tipped workers
+gen byte tipc = .
+replace tipc = 0 if worker == 1
+replace tipc = 1 if (worker == 1 & inlist (occ,4040,4060,4110,4400,4500,4510,4520))
+replace tipc = 1 if (worker == 1 & inlist (occ,4120,4130) & inlist (ind, 8580,8590,8660,8670,8680,8690,8970,8980,8990,9090))
+
+lab var tipc "Tipped occupations"
+lab define tipc 0 "Not tipped" 1 "Tipped worker" 
+lab val tipc tipc
+
+*Veteran status
+gen byte vetc = .
+replace vetc = 1 if (vetstatd > 10 & vetstatd < 99)
+replace vetc = 0 if (vetstatd == 10)
+
+lab var vetc "Veteran status"
+lab define vetc 0 "Not a veteran" 1 "Veteran"
+lab val vetc vetc
+drop vetstatd
+
+*PW State
+lab var pwstate "Place of work state"
+lab val pwstate STATEFIP
+
+lab var pwpuma "Place of work PUMA"
+
 *merge in existing and scheduled minimumw wages
 merge m:1 pwstate using $activemins
 drop _merge
@@ -255,6 +295,8 @@ forvalues a = 1/$steps {
   gen direct`a' = .
   gen indirect`a' = .
   gen raise`a' = .
+  gen d_wage`a' = .
+  gen d_annual_inc`a' = .
 
   label var direct`a' "Directly affected at step `a'"
   label var indirect`a' "Indirectly affected at step `a'"
@@ -275,8 +317,14 @@ forvalues a = 1/$steps {
 
     *add raise to existing hourly wage
     replace hrwage`a' = hrwage`a' + raise`a'
+
+    *calculate difference between new hourly wage and counterfactual wage
+    replace d_wage`a' = hrwage`a' - cf_hrwage`a'
+    replace d_annual_inc`a' = d_wage`a' * uhrswork *52
     }
 }
+
+keep if $conditions
 
 save ${data}allsimdata.dta, replace
 
