@@ -7,4 +7,5 @@ data/stmins.dta
 logs/min_wage_test.txt
 data/allsimdata.dta
 data/outputdata.dta
+data/allsimdata.dta
 output/
