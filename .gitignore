@@ -1,11 +1,6 @@
 data/acs_state.dta
 data/Historical and projected State Minimum Wages MASTER.xlsx
-<<<<<<< HEAD
-=======
-data/stmins.dta
->>>>>>> d7e068f373aeddaa046183cb959c64cb40e0347e
 logs/min_wage_test.txt
 data/allsimdata.dta
 data/outputdata.dta
-data/allsimdata.dta
 output/
