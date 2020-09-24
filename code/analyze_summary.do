@@ -38,6 +38,11 @@ label var d_annual_inc "Total change in annual wagebill"
 label var m_d_annual_inc "Average change in annual wages"
 label var m_d_wage "Average change in hourly wages"
 
+format pop direct indirect affected m_d_annual_inc %12.0fc
+format d_annual_inc %14.0fc
+format m_direct m_indirect m_affected %6.3fc
+format m_d_wage %8.2fc
+
 *save `"`all_affected'"', replace
 save ${data}outputdata, replace
 

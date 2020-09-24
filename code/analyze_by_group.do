@@ -17,6 +17,10 @@ foreach q in `0' {
        [pw=perwt$steps], by(`q')  
 
     decode `q', generate(category)
+    insobs 1, before(1)
+    local group_name : var label `q'
+    replace category = "`group_name'" in 1
+    
     drop `q'
 
     drop d_wage m_pop
@@ -38,11 +42,15 @@ foreach q in `0' {
     label var m_d_annual_inc "Average change in annual wages"
     label var m_d_wage "Average change in hourly wages"
 
+    format pop direct indirect affected m_d_annual_inc %12.0fc
+    format d_annual_inc %14.0fc
+    format m_direct m_indirect m_affected %6.3fc
+    format m_d_wage %8.2fc
+
     save `bygroup_affected', replace
     use ${data}outputdata, clear
 
     append using `bygroup_affected', force
-    insobs 1
     
     order category pop direct m_direct indirect m_indirect affected m_affected d_annual_inc /// 
     m_d_annual_inc m_d_wage 

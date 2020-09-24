@@ -12,15 +12,18 @@ global data ${base}data/
 global output ${base}output/
 global log ${base}logs/
 
-global allmins ${data}stmins.dta
-global activemins ${data}sim_active_mins.dta
+global allstmins ${data}stmins.dta
+global all_localmins ${data}local_mins.dta
+global active_stmins ${data}sim_active_mins.dta
+global active_localmins ${data}active_local_mins.dta
 global simdata ${data}allsimdata.dta
 
-global outputfile ${output}rtwa_output.xlsx
+global outputfile ${output}rtwa_output_newlogic.xlsx
 
 *define the subgroups for which to describe specific impacts 
-local groups "worker female teen agec racec poc childc hourc edc indc sectc faminc povstat tipc"
-
+local groups "worker female teen agec racec poc childc hourc edc indc sectc faminc povstat tipc statefips"
+*local groups "worker teen statefips"
+global real_wage_growth 0.005
 *set any special restrictions on the simulation dataset
 *(e.g., limit to a specific pwstate for individual state proposal)
 *"worker == 1" is the default, which is essentially no restrictions
@@ -40,7 +43,7 @@ do ${code}load_cpi_projections.do "${data}CPI_projections_8_2020"
 *1) specify csv file with proposed increase schedule and data year of ACS data first
 *2) specify lower bound on population eligible for minimum wage increase second
 *3) specify upper bound of spillover effect third
-do ${code}load_model_inputs.do "${data}rtwa_inputs" 0.75 1.15
+do ${code}load_model_inputs.do "${data}rtwa_inputs" 0.8 1.15
 
 *input current population growth projections by race/ethnicity
 do ${code}load_pop_projections.do "${data}pop_projections_8_2020"
@@ -51,7 +54,7 @@ do ${code}load_pop_projections.do "${data}pop_projections_8_2020"
 include ${code}load_acs_data.do 
 
 *calculate affected counts, shares, and raises for affected workers for all steps
-include ${code}analyze_summary.do
+do ${code}analyze_summary.do
 
 *calculate affected counts, shares, raises by demographic groups within each step
 *using $steps in the first passed object calculates affected in final step
@@ -61,7 +64,9 @@ do ${code}analyze_by_group.do `groups'
 *generate and output descriptive statistics of affected workers
 **by various demographic cuts
 
-*erase ${data}allsimdata.dta
+erase ${simdata}
+erase ${active_stmins}
+erase ${active_localmins}
 
 log close
 exit

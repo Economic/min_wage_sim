@@ -15,6 +15,9 @@ label variable mdate "Date of proposed min wage change"
 gen step=_n-1
 global steps = _N-1
 
+tempfile modelinputs
+save `modelinputs', replace
+
 *assign upper bound for spillover effects and lower bound for direct effects
 scalar lower_bound = `2'
 scalar spillover = `3'
@@ -24,7 +27,8 @@ merge 1:m mdate using ${data}cpi_projections
 keep if _merge==3
 drop _merge
 
-merge 1:m mdate using ${allmins}
+*merge in state minimum and tipped minimum wages
+merge 1:m mdate using ${allstmins}
 keep if _merge==3
 drop _merge
 
@@ -50,8 +54,8 @@ forvalues a = 1/$steps {
     label variable tipmin`a' "State tipped minimum wage at Step `a'"
 
     *create scalars with proposed new minimum and tipped minimums
-    scalar new_mw`a' = new_mw`a'
-    scalar new_tw`a' = new_tw`a'
+    scalar prop_mw`a' = new_mw`a'
+    scalar prop_tw`a' = new_tw`a'
 
     global increase_date`a' = mdate`a'
 
@@ -66,4 +70,16 @@ forvalues a = 1/$steps {
 drop new_mw* new_tw* mdate*
 
 *save file of relevant minimum wages
-save $activemins, replace
+save $active_stmins, replace
+
+clear
+
+use `modelinputs'
+merge 1:m mdate using ${all_localmins}
+keep if _merge == 3
+drop _merge month year new_mw new_tw
+
+reshape wide local_mw local_tw mdate, i(pwstate pwpuma) j(step)
+
+drop mdate*
+save ${active_localmins}, replace

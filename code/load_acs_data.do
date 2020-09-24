@@ -32,7 +32,6 @@ lab var agec "Age category"
 label define agec 0 "Age 16 to 24" 1 "Age 25 to 39" 2 "Age 40 to 54" ///
   3 "Age 55 or older"
 label values agec agec
-drop age
 
 *sex
 gen byte female = .
@@ -130,7 +129,7 @@ drop marst
 *Family income and poverty
 gen faminc = irecode(ftotinc,25000,50000,75000,100000,150000)
 label define l_faminc 0 "Less than $25,000" 1 "$25,000 - $49,999" 2 "$50,000 - $74,999" ///
-  3 "$75,000 - $99,999" 4 "$100,000 - $149,999" 5 "$150,000 or more" . "Missing family income"
+  3 "$75,000 - $99,999" 4 "$100,000 - $149,999" 5 "$150,000 or more"
 label values faminc l_faminc
 lab var faminc "Family income category"
 
@@ -242,9 +241,20 @@ lab val pwstate STATEFIP
 
 lab var pwpuma "Place of work PUMA"
 
-*merge in existing and scheduled minimumw wages
-merge m:1 pwstate using $activemins
+*merge in existing and scheduled state minimum wages
+merge m:1 pwstate using $active_stmins
 drop _merge
+
+*merge in existing and scheduled local minimum wages
+merge m:1 pwstate pwpuma using $active_localmins
+drop _merge
+
+*replace binding current law minimum wage with local min where appropriate 
+forvalues a = 1/$steps {
+  replace stmin`a' = local_mw`a' if local_mw`a' > stmin`a' & local_mw`a' != .
+  replace tipmin`a' = local_tw`a' if local_tw`a' > tipmin`a' & local_tw`a' != .
+}
+drop local_mw* local_tw*
 
 *merge population growth rate assumptions
 merge m:1 racec using ${data}popgrowth
@@ -258,37 +268,36 @@ forvalues a = 1/$steps {
 
 *create counterfactual wage values
 gen cf_hrwage0 = hrwage0
+gen byte mw_eligible = .
+replace mw_eligible = 1 if  worker == 1 & (hrwage0 > (stmin0 * lower_bound)) & hrwage != .
 
 forvalues a = 1/$steps {
-  gen hrwage`a' = .
+  gen hrwage`a' = hrwage`=`a'-1'
   label var hrwage`a' "Hourly wage at step `a'"
   *increase hourly wage values by inflation between data period and each step
-  replace hrwage`a' = hrwage`=`a'-1' * (cpi`a' / cpi`=`a'-1') if hrwage0 != .
-   * replace hrwage`a' = (cpi`a' / cpi0) * hrwage0 if hrwage0 != .
+  replace hrwage`a' = hrwage`=`a'-1' * ((cpi`a' / cpi`=`a'-1') + $real_wage_growth) if hrwage0 != .
+   *replace hrwage`a' = (cpi`a' / cpi0) * hrwage0 if hrwage0 != .
   
-*increase hourly wage to new MW if increase occured since data period
-  *simple option:
-    *replace hrwage`a' = stmin`a' if (stmin`a' > hrwage`a') & (hrwage`=`a'-1' > (lower_bound * stmin`=`ka'-1'))
+   *increase hourly wage to new MW if increase occured since data period
+    *simple option:
+    replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * spillover) - hrwage`a')))) ///
+      if (stmin`a' > hrwage`a') & mw_eligible == 1
 
-  *old model's logic:
-  if stmin`a' > stmin`=`a'-1' {
-    *in places where there was a minimum wage increase
-    if hrwage`a' < (stmin`a' * spillover) {
-      *if their cpi/natural-wage-growth-adjusted wage is less than the new minimum wage
-      if (hrwage`=`a'-1' < stmin`=`a'-1') {
-        *if they were below the previous minimum wage, bring them to the same relative place
-        replace hrwage`a' = max((hrwage0 / stmin0) * stmin`a', hrwage`a') 
+   *old model's logic:/*
+  *in places where there was a minimum wage increase...
+   if stmin`a' > stmin`=`a'-1' {
+      *if their cpi-adjusted wage is less than the new minimum wage, either:
+      if hrwage`a' < (stmin`a' * spillover) & hrwage0 > (stmin0 * lower_bound) {
+      *bring them to the same position relative to the previous minimum if they were previously below the minimum
+        replace hrwage`a' = (hrwage`=`a'-1' / stmin`=`a'-1') * stmin`a' if (hrwage`=`a'-1' < (lower_bound * stmin`=`a'-1'))
+        *otherwise, bring them either 1/4 the distance to the spillover cutoff or up to the new minimum, whichever is larger
+        replace hrwage`a' = hrwage`a' + (((stmin`a' * spillover) - hrwage`a')*.25) if (hrwage`=`a'-1' >= (lower_bound * stmin`=`a'-1'))
+        replace hrwage`a' = stmin`a' if hrwage`a' < stmin`a'
       }
-      else {
-        *otherwise, bring them either 1/4 the distance to the spillover cutoff or up to the new minimum, which is larger
-        replace hrwage`a' = max(stmin`a', hrwage`=`a'-1' + (((stmin`a' * spillover)-hrwage`=`a'-1')*.025))
-      }
-    }
-  }
- 
+    }*/
  gen cf_hrwage`a' = hrwage`a'
  label var cf_hrwage`a' "Counterfactual wage at step `a'"
- }
+}
 
 *identify directly and indirectly affected workers, calculate implied raise
 forvalues a = 1/$steps {
@@ -302,27 +311,26 @@ forvalues a = 1/$steps {
   label var indirect`a' "Indirectly affected at step `a'"
   label var raise`a' "Raise resulting from increase at step `a'"
 
-  if worker == 1 {
     replace direct`a' = 0
     replace indirect`a' = 0
-    
     *flag workers with wages below the new MW and above the old lower bound as directly affected
     *flag workers with wages above the new MW and below the spillover cutoff as indirectly affected
-    replace direct`a' = 1 if (new_mw`a' > hrwage`a') & (hrwage`a' > (lower_bound * stmin`a'))
-    replace indirect`a' = 1 if (hrwage`a' >= new_mw`a') & (hrwage`a' < (spillover * new_mw`a'))
+  
+    *replace direct`a' = 1 if (prop_mw`a' > hrwage`a') & (hrwage`a' > (lower_bound * stmin`a')) & (hrwage0 > (lower_bound * stmin0))
+    replace direct`a' = 1 if prop_mw`a' > stmin`a' & (prop_mw`a' > hrwage`a') & mw_eligible == 1
+    replace indirect`a' = 1 if prop_mw`a' > stmin`a' & (hrwage`a' >= prop_mw`a') & (hrwage`a' < (spillover * prop_mw`a'))
 
     *calculate implied raises for both 
-    replace raise`a' = min(max((new_mw`a' - hrwage`a'), 0.25 * ((spillover * new_mw`a') - hrwage`a')), new_mw`a' - stmin`a') if direct`a' == 1
-    replace raise`a' = 0.25 * ((spillover * new_mw`a') - hrwage`a') if indirect`a' == 1
+    replace raise`a' = min(max((prop_mw`a' - hrwage`a'), 0.25 * ((spillover * prop_mw`a') - hrwage`a')), prop_mw`a' - stmin`a') if direct`a' == 1
+    replace raise`a' = 0.25 * ((spillover * prop_mw`a') - hrwage`a') if indirect`a' == 1
 
     *add raise to existing hourly wage
-    replace hrwage`a' = hrwage`a' + raise`a'
-
+    replace hrwage`a' = hrwage`a' + raise`a' if (raise`a' > 0 & raise`a' != .)
+ 
     *calculate difference between new hourly wage and counterfactual wage
-    replace d_wage`a' = hrwage`a' - cf_hrwage`a'
-    replace d_annual_inc`a' = d_wage`a' * uhrswork *52
-    }
-}
+    replace d_wage`a' = hrwage`a' - cf_hrwage`a' if (raise`a' > 0 & raise`a' != .)
+    replace d_annual_inc`a' = d_wage`a' * uhrswork * 52 if (raise `a' > 0 & raise`a' != .)
+  }
 
 keep if $conditions
 
