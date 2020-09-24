@@ -28,7 +28,7 @@ keep if _merge==3
 drop _merge
 
 *merge in state minimum and tipped minimum wages
-merge 1:m mdate using ${allstmins}
+merge 1:m mdate using ${all_stmins}
 keep if _merge==3
 drop _merge
 

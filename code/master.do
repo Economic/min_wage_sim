@@ -8,11 +8,12 @@ clear all
 
 global base /projects/dcooper/min_wage/
 global code ${base}code/
+global inputs ${base}inputs/
 global data ${base}data/
 global output ${base}output/
 global log ${base}logs/
 
-global allstmins ${data}stmins.dta
+global all_stmins ${data}stmins.dta
 global all_localmins ${data}local_mins.dta
 global active_stmins ${data}sim_active_mins.dta
 global active_localmins ${data}active_local_mins.dta
@@ -43,7 +44,7 @@ do ${code}load_cpi_projections.do "${data}CPI_projections_8_2020"
 *1) specify csv file with proposed increase schedule and data year of ACS data first
 *2) specify lower bound on population eligible for minimum wage increase second
 *3) specify upper bound of spillover effect third
-do ${code}load_model_inputs.do "${data}rtwa_inputs" 0.8 1.15
+do ${code}load_model_inputs.do "${inputs}rtwa_inputs" 0.8 1.15
 
 *input current population growth projections by race/ethnicity
 do ${code}load_pop_projections.do "${data}pop_projections_8_2020"
@@ -67,6 +68,7 @@ do ${code}analyze_by_group.do `groups'
 erase ${simdata}
 erase ${active_stmins}
 erase ${active_localmins}
+erase ${data}outputfile.dta
 
 log close
 exit
