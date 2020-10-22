@@ -9,7 +9,7 @@ use $simdata, clear
 
 forvalues a = 1/$steps {
     preserve
-    collapse (sum) pop=pop direct=direct`a' indirect=indirect`a' d_wage=d_wage`a' d_annual_inc=d_annual_inc`a' ///
+    gcollapse (sum) pop=pop direct=direct`a' indirect=indirect`a' d_wage=d_wage`a' d_annual_inc=d_annual_inc`a' ///
         (mean) m_pop=pop m_direct=direct`a' m_indirect=indirect`a' m_d_wage=d_wage`a' m_d_annual_inc=d_annual_inc`a' ///
         [pw=perwt`a']  
 
@@ -61,7 +61,7 @@ program type_affected
 
     forvalues a = 1/$steps {
         preserve
-        collapse (sum) d_wage_`1'=d_wage`a' d_annual_inc_`1'=d_annual_inc`a' ///
+        gcollapse (sum) d_wage_`1'=d_wage`a' d_annual_inc_`1'=d_annual_inc`a' ///
             (mean) m_d_wage_`1'=d_wage`a' m_d_annual_inc_`1'=d_annual_inc`a' ///
             [pw=perwt`a'] if `1'`a' == 1
 

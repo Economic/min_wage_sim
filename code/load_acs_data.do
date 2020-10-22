@@ -1,7 +1,5 @@
 *loads the ACS_state.dta file and formats demographic variables
-clear
-
-use ${data}acs_state.dta
+use /data/acs/acs_state.dta, clear
 keep if pwstate>0
 
 drop perwt0 perwt1 hrwage0 hrwage1 metro met2013 nfams subfam foodstmp racamind racblk ///

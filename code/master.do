@@ -6,7 +6,7 @@ set more off
 *set trace on
 clear all
 
-global base /projects/dcooper/min_wage/
+global base ""
 global code ${base}code/
 global inputs ${base}inputs/
 global data ${base}data/
@@ -30,9 +30,9 @@ global real_wage_growth 0.005
 *"worker == 1" is the default, which is essentially no restrictions
 global conditions "worker == 1"
 
-capture log close
-log using "${log}min_wage_test.txt", text replace
-numlabel, add
+*capture log close
+*log using "${log}min_wage_test.txt", text replace
+*numlabel, add
 
 *input latest CPI projections
 do ${code}load_cpi_projections.do "${data}CPI_projections_8_2020"
@@ -44,6 +44,14 @@ do ${code}load_cpi_projections.do "${data}CPI_projections_8_2020"
 *1) specify csv file with proposed increase schedule and data year of ACS data first
 *2) specify lower bound on population eligible for minimum wage increase second
 *3) specify upper bound of spillover effect third
+
+* NEEDS FIXING
+import delimited using ${data}stmins_current.csv, clear
+gen mdate = ym(year, month)
+save ${all_stmins}, replace
+use /projects/dcooper/min_wage/data/local_mins.dta, clear
+save ${all_localmins}, replace
+
 do ${code}load_model_inputs.do "${inputs}rtwa_inputs" 0.8 1.15
 
 *input current population growth projections by race/ethnicity
@@ -70,5 +78,5 @@ erase ${active_stmins}
 erase ${active_localmins}
 erase ${data}outputfile.dta
 
-log close
+*log close
 exit
