@@ -1,0 +1,3 @@
+v 3
+d Economic Policy Institute, https://epi.org
+p mwsim: minimum wage effects simulation tool for microdata
