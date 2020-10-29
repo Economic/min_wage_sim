@@ -11,4 +11,3 @@ program define mwsim
     mwsim_`0'
 
 end
-
