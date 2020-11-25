@@ -57,14 +57,8 @@ preserve
 keep `id' `input_varlist'
 
 * add population growth projections
-qui merge m:1 racec using `population_projections'
-* THERE IS A RACE = 5 in the pop projections that is not in the data
-* this is weird and needs to be fixed
-* temporary fix now:
-qui count if _merge == 2
-assert r(N) == 1
-qui drop if _merge == 2
-drop _merge 
+qui merge m:1 racec using `population_projections', assert(3) nogenerate
+
 
 *adjust person weights to reflect weights at t[n]
 qui forvalues i = 1/`steps' {
@@ -74,9 +68,9 @@ qui forvalues i = 1/`steps' {
 
 * Determine mw eligible worker
 qui gen byte mw_eligible = .
-qui replace mw_eligible = 1 if worker == 1 & (hrwage0 > (stmin0 * `lower_bound')) & hrwage != . & tipped == 0
+qui replace mw_eligible = 1 if worker == 1 & (hrwage0 > (stmin0 * `lower_bound')) & hrwage != . & tipc == 0
 qui gen byte tip_eligible = .
-qui replace tip_eligible = 1 if worker == 1 & (hrwage0> (tipmin0 * `lower_bound')) & hrwage != . & tipped == 1
+qui replace tip_eligible = 1 if worker == 1 & (hrwage0> (tipmin0 * `lower_bound')) & hrwage != . & tipc == 1
 
 di as txt _n(1) "Creating counterfactual wage values"
 qui gen cf_hrwage0 = hrwage0
