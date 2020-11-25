@@ -57,14 +57,8 @@ preserve
 keep `id' `input_varlist'
 
 * add population growth projections
-qui merge m:1 racec using `population_projections'
-* THERE IS A RACE = 5 in the pop projections that is not in the data
-* this is weird and needs to be fixed
-* temporary fix now:
-qui count if _merge == 2
-assert r(N) == 1
-qui drop if _merge == 2
-drop _merge 
+qui merge m:1 racec using `population_projections', assert(3) nogenerate
+
 
 *adjust person weights to reflect weights at t[n]
 qui forvalues i = 1/`steps' {
@@ -74,7 +68,9 @@ qui forvalues i = 1/`steps' {
 
 * Determine mw eligible worker
 qui gen byte mw_eligible = .
-qui replace mw_eligible = 1 if worker == 1 & (hrwage0 > (stmin0 * `lower_bound')) & hrwage != .
+qui replace mw_eligible = 1 if worker == 1 & (hrwage0 > (stmin0 * `lower_bound')) & hrwage != . & tipc == 0
+qui gen byte tip_eligible = .
+qui replace tip_eligible = 1 if worker == 1 & (hrwage0> (tipmin0 * `lower_bound')) & hrwage != . & tipc == 1
 
 di as txt _n(1) "Creating counterfactual wage values"
 qui gen cf_hrwage0 = hrwage0
@@ -88,22 +84,22 @@ qui forvalues a = 1/`steps' {
    *replace hrwage`a' = (cpi`a' / cpi0) * hrwage0 if hrwage0 != .
   
    *increase hourly wage to new MW if increase occured since data period
-    *simple option:
+    *simple option: /*
     replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * `spillover') - hrwage`a')))) ///
       if (stmin`a' > hrwage`a') & mw_eligible == 1
-
-   *old model's logic:/*
+*/
+   *old model's logic:
   *in places where there was a minimum wage increase...
-   if stmin`a' > stmin`=`a'-1' {
-      *if their cpi-adjusted wage is less than the new minimum wage, either:
-      if hrwage`a' < (stmin`a' * spillover) & hrwage0 > (stmin0 * lower_bound) {
-      *bring them to the same position relative to the previous minimum if they were previously below the minimum
-        replace hrwage`a' = (hrwage`=`a'-1' / stmin`=`a'-1') * stmin`a' if (hrwage`=`a'-1' < (lower_bound * stmin`=`a'-1'))
-        *otherwise, bring them either 1/4 the distance to the spillover cutoff or up to the new minimum, whichever is larger
-        replace hrwage`a' = hrwage`a' + (((stmin`a' * spillover) - hrwage`a')*.25) if (hrwage`=`a'-1' >= (lower_bound * stmin`=`a'-1'))
-        replace hrwage`a' = stmin`a' if hrwage`a' < stmin`a'
-      }
-    }*/
+  *if their cpi-adjusted wage is less than the new minimum wage...
+  *raise nontipped workers either up to the new minimum or 1/4 distance to spillover if they were above the lower bound initially
+   replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * `spillover') - hrwage`a')))) ///
+      if (stmin`a' > hrwage`a') & mw_eligible == 1 & (stmin`a' > stmin`=`a'-1')
+  *raise tipped workers hourly wages by any increase in the tipped minimum
+   replace hrwage`a' = (hrwage`a' + (tipmin`a' - tipmin`=`a'-1')) if tip_eligible == 1 & (tipmin`a' > tipmin`=`a'-1') 
+  *if their wages were above the regular minimum previously, ensure they're at least at the new minimum 
+   replace hrwage`a' = stmin`a' if stmin`a' > hrwage`a' & (hrwage`=`a'-1' > stmin`=`a'-1') & tip_eligible == 1
+   
+  
  gen cf_hrwage`a' = hrwage`a'
  label var cf_hrwage`a' "Counterfactual wage at step `a'"
 }
@@ -124,15 +120,29 @@ qui forvalues a = 1/`steps' {
     replace direct`a' = 0
     replace indirect`a' = 0
     *flag workers with wages below the new MW and above the old lower bound as directly affected
+    *mw_eligible denotes above lower bound; tip_eligible denotes above tipped lower bound
+    *tipped workers directly affected if wages (inclusive of tips) < new min wage (regardless of change in tipped min)
+    replace direct`a' = 1 if prop_mw`a' > stmin`a' & (prop_mw`a' > hrwage`a') & (mw_eligible == 1 | tip_eligible == 1)
+    replace direct`a' = 1 if prop_tw`a' > tipmin`a' & (prop_mw`a' > hrwage`a') & tip_eligible == 1
+    
     *flag workers with wages above the new MW and below the spillover cutoff as indirectly affected
-  
-    *replace direct`a' = 1 if (prop_mw`a' > hrwage`a') & (hrwage`a' > (lower_bound * stmin`a')) & (hrwage0 > (lower_bound * stmin0))
-    replace direct`a' = 1 if prop_mw`a' > stmin`a' & (prop_mw`a' > hrwage`a') & mw_eligible == 1
-    replace indirect`a' = 1 if prop_mw`a' > stmin`a' & (hrwage`a' >= prop_mw`a') & (hrwage`a' < (`spillover' * prop_mw`a'))
+    *tipped workers are indirectly affected if wages > new minimum wage and tipped min increases
+    replace indirect`a' = 1 if prop_mw`a' > stmin`a' & (hrwage`a' >= prop_mw`a') & (hrwage`a' < (`spillover' * prop_mw`a')) /// 
+        & mw_eligible == 1
+    replace indirect`a' = 1 if prop_tw`a' > tipmin`a' & (hrwage`a' >= prop_mw`a') & tip_eligible == 1
 
-    *calculate implied raises for both 
-    replace raise`a' = min(max((prop_mw`a' - hrwage`a'), 0.25 * ((`spillover' * prop_mw`a') - hrwage`a')), prop_mw`a' - stmin`a') if direct`a' == 1
-    replace raise`a' = 0.25 * ((`spillover' * prop_mw`a') - hrwage`a') if indirect`a' == 1
+    *calculate implied raises for both
+    *directly affected nontipped workers get 1/4 distance to spillover or up to new MW, whichever is higher
+    replace raise`a' = min(max((prop_mw`a' - hrwage`a'), 0.25 * ((`spillover' * prop_mw`a') - hrwage`a')), prop_mw`a' - stmin`a') /// 
+        if direct`a' == 1 & mw_eligible == 1
+    *directly affected tipped workers get change in tipped minimum 
+    replace raise`a' = (prop_tw`a' - tipmin`a') if tip_eligible == 1
+    **CONSIDER: should directly affected tipped workers get something if tipped min is unchanged? 
+
+    *indirectly affected nontipped workers get 1/4 distance to spillover
+    replace raise`a' = 0.25 * ((`spillover' * prop_mw`a') - hrwage`a') if indirect`a' == 1 & mw_eligible == 1
+    *indirectly affected tipped workers get 1/2 change in tipped minimum
+    replace raise`a' = 0.5 * (prop_tw`a' - tipmin`a') if indirect`a' == 1 & tip_eligible == 1
 
     *add raise to existing hourly wage
     replace hrwage`a' = hrwage`a' + raise`a' if (raise`a' > 0 & raise`a' != .)
