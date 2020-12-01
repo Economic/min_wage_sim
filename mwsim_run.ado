@@ -8,6 +8,12 @@ qui {
     use `"`policy_schedule'"', clear
     * check policy schedule and steps are correct
     sum step 
+    if r(max) != `steps' {
+        noi disp as err `"Number of specified steps does not agree with policy schedule:"'
+        noi disp as err `"`steps' steps specified by user but"'
+        noi disp as err `"`r(max)' steps in policy schedule `policy_schedule'"' _n
+        exit 198
+    }
     assert r(max) == `steps'
     * calculate months to steps info
     keep mdate step
