@@ -44,7 +44,7 @@ local mwvars stmin0 tipmin0
 forvalues i = 1 / `steps' {
     local mwvars `mwvars' stmin`i' tipmin`i' prop_mw`i' prop_tw`i'
 }
-local input_varlist hrwage0 perwt0 tipc racec worker uhrswork `mwvars'
+local input_varlist hrwage0 perwt0 nom_wage_growth0 tipc racec worker uhrswork `mwvars'
 confirm variable `input_varlist'
 
 * model output variables
@@ -65,10 +65,10 @@ keep `id' `input_varlist'
 * add population growth projections
 qui merge m:1 racec using `population_projections', assert(3) nogenerate
 
-
 *adjust person weights to reflect weights at t[n]
 qui forvalues i = 1/`steps' {
-  gen perwt`i' = perwt`=`i'-1' * (((months_to_`i'/12) * (growthann-1))+1)
+  *gen perwt`i' = perwt`=`i'-1' * (((months_to_`i'/12) * (growthann-1))+1)
+  gen perwt`i' = perwt`=`i'-1' * ((growthann)^(months_to_`i'/12))
   label var perwt`i' "Person weight at step `a'" 
 }
 
@@ -81,33 +81,31 @@ qui replace tip_eligible = 1 if worker == 1 & (hrwage0> (tipmin0 * `lower_bound'
 di as txt _n(1) "Creating counterfactual wage values"
 qui gen cf_hrwage0 = hrwage0
 qui forvalues a = 1/`steps' {
-  noi di as txt "... step `a'"
+    noi di as txt "... step `a'"
+    gen hrwage`a' = hrwage`=`a'-1'
+    label var hrwage`a' "Hourly wage at step `a'"
 
-  gen hrwage`a' = hrwage`=`a'-1'
-  label var hrwage`a' "Hourly wage at step `a'"
-  *increase hourly wage values by inflation between data period and each step
-  replace hrwage`a' = hrwage`=`a'-1' * ((cpi`a' / cpi`=`a'-1') + `real_wage_growth') if hrwage0 != .
-   *replace hrwage`a' = (cpi`a' / cpi0) * hrwage0 if hrwage0 != .
-  
-   *increase hourly wage to new MW if increase occured since data period
-    *simple option: /*
-    replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * `spillover') - hrwage`a')))) ///
-      if (stmin`a' > hrwage`a') & mw_eligible == 1
-*/
-   *old model's logic:
-  *in places where there was a minimum wage increase...
-  *if their cpi-adjusted wage is less than the new minimum wage...
-  *raise nontipped workers either up to the new minimum or 1/4 distance to spillover if they were above the lower bound initially
-   replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * `spillover') - hrwage`a')))) ///
-      if (stmin`a' > hrwage`a') & mw_eligible == 1 & (stmin`a' > stmin`=`a'-1')
-  *raise tipped workers hourly wages by any increase in the tipped minimum
-   replace hrwage`a' = (hrwage`a' + (tipmin`a' - tipmin`=`a'-1')) if tip_eligible == 1 & (tipmin`a' > tipmin`=`a'-1') 
-  *if their wages were above the regular minimum previously, ensure they're at least at the new minimum 
-   replace hrwage`a' = stmin`a' if stmin`a' > hrwage`a' & (hrwage`=`a'-1' > stmin`=`a'-1') & tip_eligible == 1
+    * increase hourly wage values by inflation between data period and each step
+    * for first step use specified wage growth 
+    if `a' == 1 {
+        replace hrwage`a' = hrwage`=`a'-1' * ((1 + nom_wage_growth0)^(months_to_`a'/12)) if hrwage0 != .
+    }
+    else {
+        replace hrwage`a' = hrwage`=`a'-1' * ((cpi`a' / cpi`=`a'-1') + (1+`real_wage_growth')^(months_to_`a'/12) - 1) if hrwage0 != .
+    }
    
-  
- gen cf_hrwage`a' = hrwage`a'
- label var cf_hrwage`a' "Counterfactual wage at step `a'"
+    * in places where there was a minimum wage increase...
+    * if their cpi-adjusted wage is less than the new minimum wage...
+    * raise nontipped workers either up to the new minimum or 1/4 distance to spillover if they were above the lower bound initially
+    replace hrwage`a' = max(stmin`a', (hrwage`a' + (.25*((stmin`a' * `spillover') - hrwage`a')))) ///
+    if (stmin`a' > hrwage`a') & mw_eligible == 1 & (stmin`a' > stmin`=`a'-1')
+    *raise tipped workers hourly wages by any increase in the tipped minimum
+    replace hrwage`a' = (hrwage`a' + (tipmin`a' - tipmin`=`a'-1')) if tip_eligible == 1 & (tipmin`a' > tipmin`=`a'-1') 
+    *if their wages were above the regular minimum previously, ensure they're at least at the new minimum 
+    replace hrwage`a' = stmin`a' if stmin`a' > hrwage`a' & (hrwage`=`a'-1' > stmin`=`a'-1') & tip_eligible == 1
+
+    gen cf_hrwage`a' = hrwage`a'
+    label var cf_hrwage`a' "Counterfactual wage at step `a'"
 }
 
 di as txt _n(1) "Calculating directly and indirectly affected status and raise amounts"
