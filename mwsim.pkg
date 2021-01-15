@@ -1,7 +1,7 @@
 v 3
 d mwsim. minimum wage effects simulation tool for microdata.
 d Economic Policy Institute.
-d Distribution-Date: 20201027
+d Distribution-Date: 20210115
 f mwsim.ado
 f mwsim_analyze.ado
 f mwsim_run.ado
