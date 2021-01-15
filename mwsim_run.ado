@@ -1,6 +1,6 @@
 capture program drop mwsim_run
 program define mwsim_run
-syntax, microdata(string) POLICY_schedule(string) steps(integer) CPI_projections(string) POPULATION_projections(string) conditions(string) real_wage_growth(real) [lower_bound(real 0.8) spillover(real 1.15)]
+syntax, microdata(string) POLICY_schedule(string) steps(integer) CPI_projections(string) POPULATION_projections(string) real_wage_growth(real) [conditions(string) lower_bound(real 0.8) spillover(real 1.15)]
 
 
 qui {
@@ -35,9 +35,15 @@ qui {
     }
 }
 
-di as txt _n(1) "Loading input microdata with restrictions: `conditions'"
 * load input microdata
-use if `conditions' using `microdata', clear 
+if "`conditions'" != "" {
+    di as txt _n(1) "Loading input microdata with restrictions: `conditions'"
+    use if `conditions' using `microdata', clear 
+}
+else {
+    di as txt _n(1) "Loading input microdata"
+    use `microdata', clear
+}
 
 * identify and confirm required input variables
 local mwvars stmin0 tipmin0
@@ -49,7 +55,7 @@ confirm variable `input_varlist'
 
 * model output variables
 local output_varlist ""
-foreach x in direct indirect raise d_wage d_annual_inc perwt hrwage cf_hrwage {
+foreach x in direct indirect raise d_wage d_annual_inc cf_annual_inc perwt hrwage cf_hrwage {
     forvalues i = 1 / `steps' {
         local output_varlist `output_varlist' `x'`i'
     }
@@ -106,6 +112,9 @@ qui forvalues a = 1/`steps' {
 
     gen cf_hrwage`a' = hrwage`a'
     label var cf_hrwage`a' "Counterfactual wage at step `a'"
+
+    gen cf_annual_inc`a' = cf_hrwage`a' * uhrswork * 52
+    lab var cf_annual_inc`a' "Counterfactual annual income at step `a'"
 }
 
 di as txt _n(1) "Calculating directly and indirectly affected status and raise amounts"
@@ -140,7 +149,7 @@ qui forvalues a = 1/`steps' {
     replace raise`a' = min(max((prop_mw`a' - hrwage`a'), 0.25 * ((`spillover' * prop_mw`a') - hrwage`a')), prop_mw`a' - stmin`a') /// 
         if direct`a' == 1 & mw_eligible == 1
     *directly affected tipped workers get change in tipped minimum 
-    replace raise`a' = (prop_tw`a' - tipmin`a') if tip_eligible == 1
+    replace raise`a' = (prop_tw`a' - tipmin`a') if direct`a' == 1 & tip_eligible == 1
     **CONSIDER: should directly affected tipped workers get something if tipped min is unchanged? 
 
     *indirectly affected nontipped workers get 1/4 distance to spillover
