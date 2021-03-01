@@ -55,7 +55,7 @@ confirm variable `input_varlist'
 
 * model output variables
 local output_varlist ""
-foreach x in direct indirect raise d_wage d_annual_inc cf_annual_inc perwt hrwage cf_hrwage {
+foreach x in direct indirect affected raise d_wage d_annual_inc cf_annual_inc perwt hrwage cf_hrwage {
     forvalues i = 1 / `steps' {
         local output_varlist `output_varlist' `x'`i'
     }
@@ -122,16 +122,19 @@ qui forvalues a = 1/`steps' {
     noi di as txt "... step `a'"
     gen direct`a' = .
     gen indirect`a' = .
+    gen affected`a' = .
     gen raise`a' = .
     gen d_wage`a' = .
     gen d_annual_inc`a' = .
 
     label var direct`a' "Directly affected at step `a'"
     label var indirect`a' "Indirectly affected at step `a'"
+    label var affected`a' "Affected (directly or indirectly) at step `a'"
     label var raise`a' "Raise resulting from increase at step `a'"
 
     replace direct`a' = 0
     replace indirect`a' = 0
+    replace affected`a' = 0
     *flag workers with wages below the new MW and above the old lower bound as directly affected
     *mw_eligible denotes above lower bound; tip_eligible denotes above tipped lower bound
     *tipped workers directly affected if wages (inclusive of tips) < new min wage (regardless of change in tipped min)
@@ -163,6 +166,8 @@ qui forvalues a = 1/`steps' {
     *calculate difference between new hourly wage and counterfactual wage
     replace d_wage`a' = hrwage`a' - cf_hrwage`a' if (raise`a' > 0 & raise`a' != .)
     replace d_annual_inc`a' = d_wage`a' * uhrswork * 52 if (raise `a' > 0 & raise`a' != .)
+
+    replace affected`a' = direct`a' + indirect`a'
   }
 
 di as txt _n(1) "Adding output variables to input microdata"

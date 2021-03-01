@@ -16,12 +16,13 @@ qui if "`conditions'" != "" {
 di as txt _n(1) "Calculating overall affected totals"
 qui forvalues i = 1 / `steps' {
     noi di as txt "... step `i'"
-    use direct`i' indirect`i' d_annual_inc`i' cf_annual_inc`i' d_wage`i' d_annual_inc`i' perwt`i' using `microdata', clear
+    use direct`i' indirect`i' affected`i' d_annual_inc`i' cf_annual_inc`i' d_wage`i' d_annual_inc`i' perwt`i' using `microdata', clear
     gen byte pop = 1
     gcollapse ///
-        (sum) pop direct = direct`i' indirect = indirect`i' ///
+        (sum) pop direct = direct`i' indirect = indirect`i' affected = affected`i' ///
         d_annual_inc = d_annual_inc`i' cf_annual_inc = cf_annual_inc`i' ///
-        (mean) m_direct = direct`i' m_indirect = indirect`i' m_d_wage = d_wage`i' m_d_annual_inc = d_annual_inc`i' ///
+        (mean) m_direct = direct`i' m_indirect = indirect`i' m_affected = affected`i' m_d_wage = d_wage`i' m_d_annual_inc = d_annual_inc`i' ///
+        m_cf_annual_inc = cf_annual_inc`i' (rawsum) sample = pop direct_sample = direct`i' indirect_sample = indirect`i' /// 
         [pw=perwt`i']  
     gen step = `i'
     tempfile step`i'
@@ -32,10 +33,10 @@ forvalues i = 1 / `steps' {
     append using `step`i''
 }
 
-gen affected = direct + indirect
+*gen affected = direct + indirect
 label var affected "Total affected directly or indirectly"
 
-gen m_affected = m_direct + m_indirect
+*gen m_affected = m_direct + m_indirect
 label var m_affected "Share affected directly or indirectly"
 label var pop "Wage-earning workforce"
 label var direct "Count directly affected"
@@ -46,23 +47,29 @@ label var d_annual_inc "Total change in annual wage bill"
 label var cf_annual_inc "Total counterfactual annual wage bill"
 label var m_d_annual_inc "Average change in annual wages"
 label var m_d_wage "Average change in hourly wages"
+label var m_cf_annual_inc "Average counterfactual annual wage"
+label var sample "Count overall workforce sample"
+label var direct_sample "Count directly affected sample"
+label var indirect_sample "Count indirectly affected sample"
 
 format pop direct indirect affected m_d_annual_inc %12.0fc
-format d_annual_inc %14.0fc
+format d_annual_inc m_cf_annual_inc %14.0fc
 format m_direct m_indirect m_affected %6.3fc
 format m_d_wage %8.2fc
 
 tempfile results_overall 
 qui save `results_overall'
 
-qui foreach x in direct indirect {
+qui foreach x in direct indirect affected {
     noi di as txt _n(1) "Calculating overall `x'ly affected income changes"
     forvalues i = 1 / `steps' {
         noi di as txt "... step `i'"
-        use d_wage`i' d_annual_inc`i' cf_annual_inc`i' d_wage`i' d_annual_inc`i' perwt`i' `x'`i' using `microdata', clear
+        use d_wage`i' d_annual_inc`i' cf_annual_inc`i' perwt`i' `x'`i' using `microdata', clear
+        gen byte pop = 1
         gcollapse ///
             (sum) d_annual_inc_`x' = d_annual_inc`i' cf_annual_inc_`x' = cf_annual_inc`i' ///
-            (mean) m_d_wage_`x' = d_wage`i' m_d_annual_inc_`x' = d_annual_inc`i' ///
+            (mean) m_d_wage_`x' = d_wage`i' m_d_annual_inc_`x' = d_annual_inc`i' m_cf_annual_inc_`x' = cf_annual_inc`i' ///
+            (rawsum) sample = pop `x'_sample = `x'`i' ///
             if `x'`i' == 1 [pw=perwt`i'] 
         gen step = `i'
         tempfile step`i'_`x'
@@ -80,12 +87,26 @@ qui foreach x in direct indirect {
 use `results_overall', clear 
 qui merge 1:1 step using `results_direct', assert(3) nogenerate
 qui merge 1:1 step using `results_indirect', assert(3) nogenerate
+qui merge 1:1 step using `results_affected', assert(3) nogenerate
+
+label var d_annual_inc_direct "Total change in annual wage bill (directly affected)"
+label var cf_annual_inc_direct "Total counterfactual annual wage bill (directly affected)"
+label var m_d_annual_inc_direct "Average change in annual wages (directly affected)"
+label var m_d_wage_direct "Average change in hourly wages (directly affected)"
+label var m_cf_annual_inc_direct "Average counterfactual annual wage (directly affected)"
+label var d_annual_inc_indirect "Total change in annual wage bill (indirectly affected)"
+label var cf_annual_inc_indirect "Total counterfactual annual wage bill (indirectly affected)"
+label var m_d_annual_inc_indirect "Average change in annual wages (indirectly affected)"
+label var m_d_wage_indirect "Average change in hourly wages (indirectly affected)"
+label var m_cf_annual_inc_indirect "Average counterfactual annual wage (indirectly affected)"
+label var cf_annual_inc_affected "Total counterfactual annual wage bill (affected only)"
+label var m_cf_annual_inc_affected "Average counterfactual annual wage (affected only)"
 
 order step pop ///
     direct m_direct indirect m_indirect affected m_affected ///
-    d_annual_inc cf_annual_inc m_d_annual_inc m_d_wage ///
-    d_annual_inc_direct cf_annual_inc_direct m_d_annual_inc_direct m_d_wage_direct ///
-    d_annual_inc_indirect cf_annual_inc_indirect m_d_annual_inc_indirect m_d_wage_indirect
+    d_annual_inc cf_annual_inc m_d_annual_inc m_cf_annual_inc_affected m_d_wage ///
+    d_annual_inc_direct cf_annual_inc_direct m_d_annual_inc_direct m_cf_annual_inc_direct m_d_wage_direct ///
+    d_annual_inc_indirect cf_annual_inc_indirect m_d_annual_inc_indirect m_cf_annual_inc_indirect m_d_wage_indirect
 
 di _n(1) "Saving overall results to spreadsheet" _n(1)
 export excel using `output_excel', sheet("Summary") firstrow(varlabels) replace
@@ -105,6 +126,7 @@ qui if "`by'" != "" {
         gcollapse ///
             (sum) pop direct = direct`i' indirect = indirect`i' d_annual_inc = d_annual_inc`i' cf_annual_inc = cf_annual_inc`i' ///
             (mean) m_direct = direct`i' m_indirect = indirect`i' m_d_wage = d_wage`i' m_d_annual_inc = d_annual_inc`i' ///
+            (rawsum) sample = pop direct_sample = direct`i' indirect_sample = indirect`i' ///
             [pw=perwt`i'], by(`group')  
 
         decode `group', generate(category)
