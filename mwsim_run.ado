@@ -1,7 +1,6 @@
 capture program drop mwsim_run
 program define mwsim_run
-syntax, microdata(string) POLICY_schedule(string) steps(integer) CPI_projections(string) POPULATION_projections(string) real_wage_growth(real) [conditions(string) lower_bound(real 0.8) spillover(real 1.15)]
-
+syntax, microdata(string) POLICY_schedule(string) steps(integer) CPI_projections(string) POPULATION_projections(string) real_wage_growth(real) [conditions(string) lower_bound(real 0.8) spillover(real 1.15) modify_cfwage_steps(numlist) modify_cfwage_do(string)]
 
 qui {
     * grab dates from policy schedule
@@ -110,6 +109,14 @@ qui forvalues a = 1/`steps' {
     *if their wages were above the regular minimum previously, ensure they're at least at the new minimum 
     replace hrwage`a' = stmin`a' if stmin`a' > hrwage`a' & (hrwage`=`a'-1' > stmin`=`a'-1') & tip_eligible == 1
 
+    if "`modify_cfwage_steps'" != "" & "`modify_cfwage_do'" != "" {
+        local stepcheck: list a in modify_cfwage_steps
+        if `stepcheck' == 1 {
+            noi di as txt "   ... modifying counterfactual wages at step `a' according to `modify_cfwage_do'"
+            do "`modify_cfwage_do'" `a'
+        }
+    }
+
     gen cf_hrwage`a' = hrwage`a'
     label var cf_hrwage`a' "Counterfactual wage at step `a'"
 
@@ -162,7 +169,7 @@ qui forvalues a = 1/`steps' {
  
     *calculate difference between new hourly wage and counterfactual wage
     replace d_wage`a' = hrwage`a' - cf_hrwage`a' if (raise`a' > 0 & raise`a' != .)
-    replace d_annual_inc`a' = d_wage`a' * uhrswork * 52 if (raise `a' > 0 & raise`a' != .)
+    replace d_annual_inc`a' = d_wage`a' * uhrswork * 52 if (raise`a' > 0 & raise`a' != .)
   }
 
 di as txt _n(1) "Adding output variables to input microdata"
